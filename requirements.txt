@@ -1,2 +1,7 @@
-# Requires Python 3.12 or later (uses the PEP 695 "type" statement).
-# Uses only the Python standard library.
+# Python 3.12+
+pydantic>=2.7
+fastapi>=0.115
+uvicorn>=0.30
+
+# testing only
+httpx>=0.27
