@@ -1,7 +1,19 @@
+"""Inventory data module for the Inventory Manager.
+
+Holds the in-memory list of stock items and the functions that validate,
+add and filter them.
+"""
+
 from typing import TypedDict
+
+# --- Configuration constants -----------------------------------------------
+LOW_STOCK_THRESHOLD = 10
+CURRENCY = "NGN"
 
 
 class Item(TypedDict):
+    """A single stock item."""
+
     item_name: str
     quantity: int
     price: float
@@ -10,6 +22,7 @@ class Item(TypedDict):
 # Python 3.12+ type alias statement (PEP 695)
 type Inventory = list[Item]
 
+# --- Data -------------------------------------------------------------------
 inventory: Inventory = [
     {"item_name": "Laptop", "quantity": 10, "price": 450000},
     {"item_name": "Mouse", "quantity": 50, "price": 5000},
@@ -20,7 +33,12 @@ inventory: Inventory = [
 
 
 def validate_item(item_name: str, quantity: int, price: float) -> Item:
-    # Adaptive maintenance: new validation feature (standard library only)
+    """Check the fields of a new item and return a clean Item record.
+
+    Raises:
+        ValueError: If the name is empty, or quantity/price is negative or
+            of the wrong type (bool is rejected because it is a subclass of int).
+    """
     if not isinstance(item_name, str) or not item_name.strip():
         raise ValueError("Item name must be a non-empty string")
     if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity < 0:
@@ -30,10 +48,13 @@ def validate_item(item_name: str, quantity: int, price: float) -> Item:
     return {"item_name": item_name.strip(), "quantity": quantity, "price": price}
 
 
-def add_item(item_name: str, quantity: int, price: float) -> None:
-    inventory.append(validate_item(item_name, quantity, price))
+def add_item(item_name: str, quantity: int, price: float) -> Item:
+    """Validate and append a new item, returning the stored record."""
+    record = validate_item(item_name, quantity, price)
+    inventory.append(record)
+    return record
 
 
-def low_stock_items(items: Inventory, threshold: int = 10) -> Inventory:
-    # Adaptive maintenance: new feature - list items that need re-ordering
+def low_stock_items(items: Inventory, threshold: int = LOW_STOCK_THRESHOLD) -> Inventory:
+    """Return the items whose quantity is at or below ``threshold``."""
     return [item for item in items if item["quantity"] <= threshold]
