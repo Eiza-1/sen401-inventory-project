@@ -1,1 +1,2 @@
+# Requires Python 3.12 or later (uses the PEP 695 "type" statement).
 # Uses only the Python standard library.
