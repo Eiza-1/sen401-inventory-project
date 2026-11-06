@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     add.add_argument("price", type=float)
     sub.add_parser("low-stock", help="list items that need re-ordering")
     args = parser.parse_args(argv)
+    controllers.init_storage()
 
     if args.command == "add":
         try:
@@ -66,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
                                                    quantity=args.quantity, price=args.price))
         except ValidationError as e:
             print("Invalid item:", "; ".join(err["msg"] for err in e.errors()))
+            return 1
+        except controllers.DuplicateItemError as e:
+            print("Error:", e)
             return 1
         print(f"Added item #{item.id}: {item.item_name} ({item.quantity} @ {format_money(item.price)})")
     elif args.command == "low-stock":

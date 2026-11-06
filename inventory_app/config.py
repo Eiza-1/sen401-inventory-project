@@ -11,3 +11,6 @@ LOW_STOCK_THRESHOLD = int(os.getenv("INVENTORY_LOW_STOCK", "10"))
 
 # Legacy data file (source for the migration)
 JSON_PATH = Path(os.getenv("INVENTORY_JSON", BASE_DIR / "data" / "inventory.json"))
+
+# SQLite database used from v2.0 onwards
+DB_PATH = Path(os.getenv("INVENTORY_DB", BASE_DIR / "data" / "inventory.db"))

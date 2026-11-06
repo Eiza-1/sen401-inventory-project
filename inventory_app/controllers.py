@@ -4,7 +4,8 @@ Every interface (CLI, REST API) calls these functions; none of them talk to
 storage directly. This removes the v1.0 problem of logic living in app.py.
 """
 
-from . import storage as repo
+from . import database as repo
+from .database import DuplicateItemError  # noqa: F401  (re-exported for callers)
 from .config import CURRENCY, LOW_STOCK_THRESHOLD
 from .models import Item, ItemCreate, ItemUpdate, StockSummary
 from .utils import total_value
@@ -12,6 +13,11 @@ from .utils import total_value
 
 class ItemNotFoundError(LookupError):
     """Raised when an item id does not exist."""
+
+
+def init_storage() -> None:
+    """Make sure the database and its tables exist."""
+    repo.init_db()
 
 
 def list_items() -> list[Item]:
@@ -28,7 +34,11 @@ def get_item(item_id: int) -> Item:
 
 
 def add_item(data: ItemCreate) -> Item:
-    """Validate (via the model) and store a new item."""
+    """Store a new item (already validated by the model).
+
+    Raises:
+        DuplicateItemError: If an item with the same name exists.
+    """
     return repo.create_item(data)
 
 
