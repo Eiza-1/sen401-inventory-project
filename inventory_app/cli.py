@@ -4,9 +4,17 @@ Usage:
     python app.py                      # print stock report
     python app.py add "Webcam" 15 25000
     python app.py low-stock
+    python app.py --api http://localhost:8000   # report via the REST API
+
+If --api (or the INVENTORY_API_URL environment variable) is set, the report
+is fetched over HTTP from the FastAPI service instead of the local database.
+This is how the 'report' container talks to the 'api' container.
 """
 
 import argparse
+import json
+import os
+import urllib.request
 
 from pydantic import ValidationError
 
@@ -40,17 +48,31 @@ def print_summary(s: StockSummary) -> None:
     print(f"Low-stock alert ({s.low_stock_threshold} or fewer): {names}")
 
 
-def report() -> None:
-    """Print the full stock report."""
+def _get_json(url: str):
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        return json.load(resp)
+
+
+def report(api_url: str | None = None) -> None:
+    """Print the full stock report, from the API if ``api_url`` is given."""
     print("=" * WIDTH)
     print("                Inventory Manager v2.0")
     print("=" * WIDTH)
-    print_stock_table(controllers.list_items())
-    print_summary(controllers.stock_summary())
+    if api_url:
+        print(f"Source: REST API {api_url}")
+        items = [Item(**i) for i in _get_json(f"{api_url}/items")]
+        summary = StockSummary(**_get_json(f"{api_url}/summary"))
+    else:
+        print("Source: local SQLite database")
+        items, summary = controllers.list_items(), controllers.stock_summary()
+    print_stock_table(items)
+    print_summary(summary)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="inventory", description="Inventory Manager v2.0")
+    parser.add_argument("--api", default=os.getenv("INVENTORY_API_URL"),
+                        help="base URL of the REST API (report only)")
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("report", help="print the stock report (default)")
     add = sub.add_parser("add", help="add a new item")
@@ -59,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
     add.add_argument("price", type=float)
     sub.add_parser("low-stock", help="list items that need re-ordering")
     args = parser.parse_args(argv)
+    if args.api and args.command in (None, "report"):
+        report(args.api.rstrip("/"))
+        return 0
     controllers.init_storage()
 
     if args.command == "add":
