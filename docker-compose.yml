@@ -1,0 +1,67 @@
+# Inventory Manager v2.0 - multi-container deployment
+#
+#   docker compose up --build        # build and start everything
+#   docker compose ps                # see running containers
+#   docker compose down              # stop (add -v to also delete the database)
+#
+# Start-up order:  migrate (JSON -> SQLite) -> api (healthy) -> report
+# All services share the SQLite file through the "db-data" volume.
+
+name: inventory-manager
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/migrate.Dockerfile
+    environment:
+      INVENTORY_DB: /db/inventory.db
+    volumes:
+      - db-data:/db
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      INVENTORY_DB: /db/inventory.db
+    volumes:
+      - db-data:/db
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  report:
+    build:
+      context: .
+      dockerfile: docker/report.Dockerfile
+    environment:
+      INVENTORY_API_URL: http://api:8000   # service name = hostname on the compose network
+    depends_on:
+      api:
+        condition: service_healthy
+
+  db-viewer:
+    image: coleifer/sqlite-web
+    environment:
+      SQLITE_DATABASE: inventory.db
+    volumes:
+      - db-data:/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  db-data:
